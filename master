@@ -3,100 +3,25 @@
 
 // Place panel in menu.
 Menu "LA-AMS"
-	"Time Series/1", /q, getWin("IPP")
-	"Mass Spectra/2", /q, getWin("MS")
+	"Time Series/1", /q, getLAwin()
+	"Mass Spectra/2"
 End
 
 // brings panel to front or generates it
-Function getWin(windowStr)
-	string windowStr
-	
-	string windows = winlist(windowStr,";","WIN:64")
-	
+Function getLAwin()
+	string windows = winlist("IPP",";","WIN:64")
 	if(strlen(windows)>0)
-		dowindow/f $windowStr
+		dowindow/f IPP
 	else
-		strswitch(windowStr)
-			case "IPP":
-				Global_Village()
-				Build_IPP("IPP",0.18,0.94)
-			case "MS":
-				Global_Village()
-				Build_MS("MS")
-		endswitch
+		Global_Village()
+		Build_Panel("IPP",0.18,0.94)
 	endif
 End
 
 Function Global_Village()
 	if (datafolderexists("root:LA") != 1)
-		newdatafolder/s root:LA
-		newdatafolder/s root:LA:HR_Type0
-		
-		//Make the HR family waves that we'll need to be interacting with.
-		Make/o/t/n=16 HR_FamilyListDefinition		
-		HR_FamilyListDefinition[0] = {"default","default","default","default","default","default","default","default","default","default","default","default","default","default","j182Wplus2;j184Wplus2;j186Wplus2;W;WO"}
-		
-		make/o/t/n=16 HR_FamilyName
-		HR_FamilyName[0]= {"CH","CHN","CHO1","CHOgt1","CHO1N","CHOgt1N","Cx","Other","NO","NH","Air","SO","HO","Cl","Tungsten"}
-		
-		make/o/n=16 HR_Family_R
-		HR_Family_R[0]= {0,36864,32640,65280,8192,16384,0,16384,0,65280,36864,65280,0,65280,0}
-		
-		make/o/n=16 HR_Family_G
-		HR_Family_G[0]= {39168,14592,0,0,24448,48896,0,16384,65280,43520,36864,0,0,0,0}
-
-		make/o/n=16 HR_Family_B
-		HR_Family_B[0]= {0,58880,29440,58880,32640,65280,0,39168,65280,0,36864,0,0,52224,0}
-		
-		make/o/n=16 HR_Family_PointNumber = p+1
-		
-		Concatenate {root:LA:HR_Type0:HR_Family_R,root:LA:HR_Type0:HR_Family_G,root:LA:HR_Type0:HR_Family_B},root:LA:HR_Type0:HR_Family_2dColorTable
-		
-		newdatafolder/s root:LA:HR_Type2
-		
-		//Make the HR family waves that we'll need to be interacting with.
-		Make/o/t/n=112 HR_FamilyListDefinition
-		HR_FamilyListDefinition[0]= {"default","default","default","default","default","default","default","default","default","default","default","default","default","default","default","default","default","default"}
-		HR_FamilyListDefinition[18]= {"default","default","default","default","default","default","default","default","default","default","default","default","default","default","default","default","default","default"}
-		HR_FamilyListDefinition[36]= {"default","default","default","default","default","default","default","default","default","default","default","default","default","default","default","default","default","default"}
-		HR_FamilyListDefinition[54]= {"default","default","default","default","default","default","default","default","default","default","default","default","default","default","default","default","default","default"}
- 		HR_FamilyListDefinition[72]= {"default","default","default","default","default","default","default","default","default","default","default","default","default","default","default","default","default","default"}
-		HR_FamilyListDefinition[90]= {"default","default","default","default","default","default","default","default","default","default","default","default","default","default","default","default","default","default"}
-		HR_FamilyListDefinition[108]= {"default","default","default","j182Wplus2;j184Wplus2;j186Wplus2;W;WO"}
-		
-		make/o/t/n=112 HR_FamilyName
-		HR_FamilyName[0]= {"CH_j13C0","CH_j13C1","CH_j13C2","CH_j13C3","CH_j13C4","CH_j13C5","CH_j13C6","CH_j13C7","CH_j13C8","CN_j13C0","CN_j13C1","CN_j13C2","CN_j13C3","CN_j13C4","CN_j13C5","CN_j13C6","CN_j13C7"}
-		HR_FamilyName[17]= {"CN2_j13C0","CN2_j13C1","CN2_j13C2","CN2_j13C3","CN2_j13C4","CN2_j13C5","CN2_j13C6","CN3_j13C0","CN3_j13C1","CN3_j13C2","CN3_j13C3","CN3_j13C4","CN3_j13C5","CN4_j13C0","CN4_j13C1","CN4_j13C2"}
-		HR_FamilyName[33]= {"CN4_j13C3","CN4_j13C4","CO_j13C0","CO_j13C1","CO_j13C2","CO_j13C3","CO_j13C4","CO_j13C5","CO_j13C6","CO_j13C7","CO2_j13C0","CO2_j13C1","CO2_j13C2","CO2_j13C3","CO2_j13C4","CO2_j13C5"}
-		HR_FamilyName[49]= {"CO2_j13C6","CO3_j13C0","CO3_j13C1","CO3_j13C2","CO3_j13C3","CO3_j13C4","CO3_j13C5","CO4_j13C0","CO4_j13C1","CO4_j13C2","CO4_j13C3","CO4_j13C4","CNO_j13C0","CNO_j13C1","CNO_j13C2","CNO_j13C3"}
-		HR_FamilyName[65]= {"CNO_j13C4","CNO_j13C5","CNO_j13C6","CN2O_j13C0","CN2O_j13C1","CN2O_j13C2","CN2O_j13C3","CN2O_j13C4","CN2O_j13C5","CN3O_j13C0","CN3O_j13C1","CN3O_j13C2","CN3O_j13C3","CN3O_j13C4","CNO2_j13C0"}
-		HR_FamilyName[80]= {"CNO2_j13C1","CNO2_j13C2","CNO2_j13C3","CNO2_j13C4","CNO2_j13C5","CNO3_j13C0","CNO3_j13C1","CNO3_j13C2","CNO3_j13C3","CNO3_j13C4","CN2O2_j13C0","CN2O2_j13C1","CN2O2_j13C2","CN2O2_j13C3"}
-		HR_FamilyName[94]= {"CN2O2_j13C4","Cx_j13C0","Cx_j13C1","Cx_j13C2","Cx_j13C3","Cx_j13C4","Cx_j13C5","Cx_j13C6","Cx_j13C7","Cx_j13C8","Other","NO","NH","Air","SO","HO","Cl","Tungsten"}
-		
-		make/o/n=112 HR_Family_R
-		HR_Family_R[0]= {0,0,0,4864,15104,24832,35072,45312,55552,36864,40448,44032,47616,51200,54784,58368,61952,16384,16384,16384,16384,16384,16384,16384,16384,16384,16384,16384,16384,16384,16384,16384,16384}
-		HR_Family_R[33]= {16384,16384,32640,45056,57344,65280,65280,65280,65280,65280,65280,65280,65280,65280,65280,65280,65280,16384,16384,16384,16384,16384,16384,16384,16384,16384,16384,16384,8192,10752,14080}
-		HR_Family_R[64]= {24320,35072,45312,55552,16384,16384,16384,16384,16384,16384,16384,16384,16384,16384,16384,16384,24320,32512,40704,48384,56576,16384,16384,16384,16384,16384,16384,16384,16384,16384,16384}
-		HR_Family_R[95]= {0,6400,13056,19712,26112,32768,39168,45824,52480,16384,0,65280,36864,65280,0,65280,0}
-		
-		make/o/n=112 HR_Family_G
-		HR_Family_G[0]= {39168,49664,59904,65280,65280,65280,65280,65280,65280,14592,21248,27648,33792,40192,46592,52992,59392,16384,16384,16384,16384,16384,16384,16384,16384,16384,16384,16384,16384,16384,16384}
-		HR_Family_G[31]= {16384,16384,16384,16384,0,0,0,4352,16640,28928,41216,53504,0,9984,19200,28416,37632,46848,56576,16384,16384,16384,16384,16384,16384,16384,16384,16384,16384,16384,24448,32256,39680,44800}
-		HR_Family_G[65]= {50176,55296,60416,16384,16384,16384,16384,16384,16384,16384,16384,16384,16384,16384,48896,51712,54272,57088,59648,62464,16384,16384,16384,16384,16384,16384,16384,16384,16384,16384,0,6400}
-		HR_Family_G[97]= {13056,19712,26112,32768,39168,45824,52480,16384,65280,43520,36864,0,0,0,0}
-
-		make/o/n=112 HR_Family_B
-		HR_Family_B[0]= {0,0,0,4864,15104,24832,35072,45312,55552,58880,59648,60416,61440,62208,62976,63744,64512,39168,39168,39168,39168,39168,39168,39168,39168,39168,39168,39168,39168,39168,39168,39168,39168}
-		HR_Family_B[33]= {39168,39168,29440,40704,51968,59392,60672,61696,62976,64256,58880,59904,60928,61696,62720,63488,64512,39168,39168,39168,39168,39168,39168,39168,39168,39168,39168,39168,32640,43008,52480}
-		HR_Family_B[64]= {55040,57600,60160,62720,39168,39168,39168,39168,39168,39168,39168,39168,39168,39168,39168,65280,65280,65280,65280,65280,65280,39168,39168,39168,39168,39168,39168,39168,39168,39168,39168}
-		HR_Family_B[95]= {0,6400,13056,19712,26112,32768,39168,45824,52480,39168,65280,0,36864,0,0,52224,0}
-		
-		make/o/n=112 HR_Family_PointNumber = p+1
-		
-		Concatenate {root:LA:HR_Type2:HR_Family_R,root:LA:HR_Type2:HR_Family_G,root:LA:HR_Type2:HR_Family_B},root:LA:HR_Type2:HR_Family_2dColorTable
+		newdatafolder root:LA
 	endif
-	
-	setdatafolder root:LA
 	
 	sq_initializeGlobalSVar("root:LA:ToDo", "")
 	sq_initializeGlobalSVar("root:LA:Ion1", "")
@@ -104,9 +29,6 @@ Function Global_Village()
 	
 	sq_initializeGlobalNVar("root:LA:FirstRun", 0)
 	sq_initializeGlobalNVar("root:LA:Spots", 3)
-	sq_initializeGlobalNVar("root:LA:Pattern", 5)
-	sq_initializeGlobalNVar("root:LA:Rows", 1)
-	sq_initializeGlobalNVar("root:LA:Columns", 1)
 	sq_initializeGlobalNVar("root:LA:MeanError", 0)
 	sq_initializeGlobalNVar("root:LA:MeanRatio", 0)
 	sq_initializeGlobalNVar("root:LA:MeanRelError", 0)
@@ -115,7 +37,7 @@ Function Global_Village()
 	sq_initializeGlobalNVar("root:LA:PeriodExpo", 0)
 	sq_initializeGlobalNVar("root:LA:Subperiod", 20)
 	sq_initializeGlobalNVar("root:LA:SubperiodExpo", 0)
-		
+	
 	if (waveexists(root:index:rn_series))
 		wave rn_series = root:index:rn_series
 	else
@@ -125,7 +47,7 @@ Function Global_Village()
 	nvar Spots = root:LA:Spots
 	variable points = numpnts(rn_series)
 	
-	make/t/o/n=(Spots) root:LA:SpotNumber
+	make/o/n=(Spots) root:LA:SpotNumber
 	make/o/n=(Spots) root:LA:SpotLocation
 	
 //	make/o/n=(Spots) root:LA:SpotsG0
@@ -136,8 +58,7 @@ Function Global_Village()
 	make/o/n=(Spots) root:LA:SpotsG3err
 	make/o/n=(Spots) root:LA:SpotsG4
 	make/o/n=(Spots) root:LA:SpotsG4err
-	
-	make/o/n=(points) root:LA:Picker
+		
 	make/o/n=(points) root:LA:TraceG0
 	make/o/n=(points) root:LA:TraceG1
 	make/o/n=(points) root:LA:TraceG1err
@@ -149,15 +70,10 @@ Function Global_Village()
 	
 	make/o/t/n=(points) root:LA:TraceLabels
 	make/o/n=(points) root:LA:TraceLocations
-	
-	make/o/t/n=0 root:LA:j13C0
-	make/o/t/n=0 root:LA:j13C1
-	
-	make/o/n=(1,1) root:LA:ImageMatrix
 End
 
 // Build the panel.
-Function Build_IPP(panelName,topFrame,fracGraph)
+Function Build_Panel(panelName,topFrame,fracGraph)
 	STRING panelName
 	VARIABLE topFrame
 	VARIABLE fracGraph
@@ -186,7 +102,6 @@ Function Build_IPP(panelName,topFrame,fracGraph)
 	wave SpotLocation = root:LA:SpotLocation
 	
 	string graphStr, windowStr, leftStr, wavePath, errorStr
-	string loadList, thisTrace, optionsStr, thisWave, thisPath, graphList, dataList
 	string YWaves = "TraceG0;TraceG1;TraceG2;TraceG3;TraceG4"
 	
 	variable frameLeft = 0.01 // hardcoded b/c less likely to change.
@@ -210,9 +125,9 @@ Function Build_IPP(panelName,topFrame,fracGraph)
 	GroupBox LA_Group_1,pos={125.00,3.00},size={131.00,60.00}
 	GroupBox LA_Group_1,labelBack=(65535,65535,65535),frame=0
 	PopupMenu LA_Pop_ToDo,pos={19.00,20.00},size={95.00,19.00},proc=Pop_ToDo,title="ToDo ="
-	PopupMenu LA_Pop_ToDo,mode=3,popvalue="Get List",value= root:panel:sq_toDoList+"Get List;"
+	PopupMenu LA_Pop_ToDo,mode=3,popvalue="P1_E1",value= #"\"P1_C1;P1_C2;P1_E1;P1_E2;P2_C1;P2_C2;P2_E1;P2_E2;P3_C1;P3_C2;P3_E1;P3_E2;\""
 	SetVariable LA_Set_FirstRun,pos={130.00,10.00},size={118.00,18.00},proc=Set_Variable,title="First Run ="
-	SetVariable LA_Set_FirstRun,limits={0,inf,1},value= FirstRun, live=1
+	SetVariable LA_Set_FirstRun,limits={0,inf,1},value= FirstRun
 	SetVariable LA_Set_Spots,pos={138.00,35.00},size={102.00,18.00},proc=Set_Variable,title="# Spots = "
 	SetVariable LA_Set_Spots,limits={1,inf,1},value= Spots,live= 1
 	SetVariable LA_Set_Period,pos={274.00,10.00},size={126.00,18.00},proc=Set_Variable,title="Period ="
@@ -230,9 +145,6 @@ Function Build_IPP(panelName,topFrame,fracGraph)
 	SetVariable LA_Set_Ion2,pos={322.00,75.00},size={156.00,20.00},proc=Set_Ion,title="Ion 2"
 	SetVariable LA_Set_Ion2,fSize=13,fStyle=1,fColor=(13364,40092,33410)
 	SetVariable LA_Set_Ion2,limits={-inf,inf,0},value= Ion2
-	CheckBox LA_Check_Org,pos={510.00,72.00},size={61.00,30.00},proc=Set_Org,title=" Org"
-	CheckBox LA_Check_Org,help={"Toggle Org Wave"},labelBack=(65535,65535,65535)
-	CheckBox LA_Check_Org,fSize=22,fStyle=1,fColor=(3,52428,1),value= 0
 	
 	SetDrawEnv xcoord= abs,ycoord= abs,fsize= 20,textyjust= 2
 	
@@ -298,40 +210,9 @@ Function Build_IPP(panelName,topFrame,fracGraph)
 				Label leftAxis "Sum (Hz)"
 			else
 				Label leftAxis "Ratio"
-				endif
 			endif
-	endfor
-	
-	// Decides what to load for the G0 and G2 Trace waves.
-	if (waveexists(root:Org))
-		Trace_Loader("G0;G2","root:Org;root:Org")
-	else
-		loadList =  Return_WaveList() 
-		if (itemsinlist(loadList) > 0)
-			Prompt thisWave,"Choose a trace from the 'root:' directory in order to proceed.",popup,loadList
-			doPrompt/HELP="Select a wave with the same number of points as 'rn_series' (root:index:rn_series)." "textHere", thisWave
-			if (V_flag == 0) // "Continue" is clicked.
-				thisPath = "root:"+thisWave
-				graphList = "G0;G2"
-				dataList = thisPath + ";" + thisPath
-				Trace_Loader(graphList, dataList) // We have built in the ability to assign multiple paths for multiple graphs, but we do not use it here.
-			else // "Cancel" is clicked.
-				abort "In the 'root:' directory, you must have a wave with the same number of points as 'rn_series' (root:index:rn_series) in order to proceed."
-			endif
-		else
-			abort "In the 'root:' directory, you must have a wave with the same number of points as 'rn_series' (root:index:rn_series) in order to proceed."
 		endif
-	endif
-	
-	Update_Picker("root:all")
-End
-
-Function/S Return_WaveList() // b/c sometimes the options string is too long.
-	variable points = numpnts(root:index:rn_series)
-	string optionsStr = "INTEGER:0,TEXT:0,DIMS:1,MINROWS:" +num2istr(points)+ ",MAXROWS:" + num2istr(points)
-	string thisList
-	thisList = wavelist("*",";",optionsStr)
-	return thisList
+	endfor
 End
 
 // Set the global ToDo wave and rescale.
@@ -390,10 +271,6 @@ Function Set_Variable (ctrlName,varNum,varStr,varName) : SetVariableControl
 	svar ToDo = root:LA:ToDo
 	string ToDoPath = "root:" + ToDo
 	
-	if (strlen(ToDo) == 0)
-		abort "You must choose a ToDo wave before proceeding."
-	endif
-	
 	Wavenote_Write(ToDoPath,varName,varStr)
 	Update_Picker(ToDoPath)
 End
@@ -418,23 +295,18 @@ Function Set_Ion(ctrlName,varNum,varStr,varName) : SetVariableControl
 	string RatioLabel = Ion2+" / "+Ion1
 	variable ionDim = FindDimLabel(Matrix, 1, varStr)
 	
-	if (strlen(ToDo) == 0)
-		abort "You must choose a ToDo wave before proceeding."
-	endif
-	
 	if (ionDim == -2)
 		abort "The ion "+varStr+" is not found in the list of ions that were fit."
 	endif
 	
 	strswitch (varName)
 		case "Ion1":
-			//TraceG0 = Matrix[p][ionDim]
-			matrixop/o TraceG0 = col(Matrix,ionDim)
+			TraceG0 = Matrix[p][ionDim]
 			Label/W=IPP#G0/Z leftAxis HzLabel
 			Label/W=IPP#G1/Z leftAxis SumLabel
 			break
 		case "Ion2":
-			matrixop/o TraceG1 = col(Matrix,ionDim)
+			TraceG2 = Matrix[p][ionDim]
 			Label/W=IPP#G2/Z leftAxis HzLabel
 			Label/W=IPP#G3/Z leftAxis SumLabel
 			break
@@ -449,7 +321,7 @@ End
 Function Wavenote_Compose(ToDoPath)
 	STRING ToDoPath
 	wave ToDo = $ToDoPath
-	string strList = "FirstRun;Spots;Pattern;Rows;Columns;Period;PeriodExpo;Subperiod;SubperiodExpo;Rows;Columns;Pattern"
+	string strList = "FirstRun;Intervals;Period;PeriodExpo;Subperiod;SubperiodExpo;Rows;Columns;Pattern"
 	string valList = "*;1;50;1;10;1;5;5;3"
 	string waveNote = note(ToDo)
 	string thisStr, thisVal, waveCombo, waveKey, waveVal
@@ -496,7 +368,7 @@ End
 Function Wavenote_Read(ToDoPath)
 	STRING ToDoPath
 	wave ToDo = $ToDoPath
-	string strList = "FirstRun;Spots;Pattern;Rows;Columns;Period;PeriodExpo;Subperiod;SubperiodExpo;Rows;Columns;Pattern"
+	string strList = "FirstRun;Intervals;Period;PeriodExpo;Subperiod;SubperiodExpo;Rows;Columns;Pattern"
 	string waveNote = note(ToDo)
 	string thisStr
 	variable idex
@@ -522,8 +394,6 @@ End
 
 Function Update_Picker (ToDoPath)
 	STRING ToDoPath
-	
-	string thisSpotWv
 	
 	nvar FirstRun = root:LA:FirstRun
 	nvar Spots = root:LA:Spots
@@ -576,11 +446,11 @@ Function Update_Picker (ToDoPath)
 		wave thisWave = root:LA:$stringfromlist(idex,spotWaves)
 		redimension/N=(Spots) thisWave
 		SetScale/I x,1,Spots,"" thisWave
-		if ( (wavetype(thisWave) != 0) && (!stringmatch(spotWaves,"SpotNumber")) )
+		if (wavetype(thisWave) != 0)
 			thisWave = 0
 		endif
 	endfor
-	SpotNumber= " "
+	SpotNumber= ""
 	
 	string traceWaves = "TraceG1;TraceG3;TraceG4;TraceG1err;TraceG3err;TraceG4err"
 	for (idex=0; idex<(itemsinlist(traceWaves)); idex=idex+1)
@@ -600,14 +470,8 @@ Function Update_Picker (ToDoPath)
 		// Ion 1 (Trace G1)
 		WaveStats/Q/R=[periodBegin, periodEnd] TraceNameToWaveRef ("IPP#G0", "Trace")
 		ion1Sum = V_Sum
-		ion1Err = sqrt(ion1Sum)		
-		if (numtype(ion1Sum) != 0)
-			ion1Sum = 0
-		endif
+		ion1Err = sqrt(ion1Sum)
 		ion1RelErr = ion1Err/ion1Sum
-		if (numtype(ion1Err) != 0)
-			ion1Err = 0
-		endif
 		SpotsG1 [idex] = ion1Sum
 		SpotsG1err [idex] = ion1Err
 		TraceG1 [midpoint] = ion1Sum
@@ -617,33 +481,21 @@ Function Update_Picker (ToDoPath)
 		WaveStats/Q/R=[periodBegin, periodEnd] TraceNameToWaveRef ("IPP#G2", "Trace")
 		ion2Sum = V_Sum
 		ion2Err = sqrt(ion2Sum)
-		if (numtype(ion2Sum) != 0)
-			ion2Sum = 0
-		endif
 		ion2RelErr = ion2Err/ion2Sum
-		if (numtype(ion2Err) != 0)
-			ion2Err = 0
-		endif
 		SpotsG3 [idex] = ion2Sum
 		SpotsG3err [idex] = ion2Err
 		TraceG3 [midpoint] = ion2Sum
 		TraceG3err [midpoint] = ion2Err
 		
-		// Ion 2 / Ion 1 (Trace G4)
+		// Ion 1 / Ion 2 (Trace G4)
 		ratio = ion2Sum / ion1Sum
-		if (numtype(ratio) != 0)
-			ratio = 0
-		endif
 		ratioRelErr = sqrt(ion1RelErr^2 + ion2RelErr^2)
 		ratioErr = ratio * ratioRelErr
-		if (numtype(ratioErr) != 0)
-			ratioErr = 0
-		endif
 		SpotsG4 [idex] = ratio
 		SpotsG4err [idex] = ratioErr
 		TraceG4 [midpoint] = ratio
 		TraceG4err [midpoint] = ratioErr
-		endfor
+	endfor
 End
 
 Function DimLabels(str_MxPath)
@@ -658,105 +510,5 @@ Function DimLabels(str_MxPath)
 		ion = IonWave[idex]
 		SetDimLabel 1,idex,$ion,$str_MxPath
 	endfor
-End
-
-Function Trace_Loader(graphList,wavePath) // For 1D waves; for 2D waves, use Set_Ion to set ions by name..
-	string graphList
-	string wavePath
-	string thisGraph, thisTraceStr, thisTracePath
-	string thisDataPath
-	variable idex
-	// Sanity.
-	if (itemsinlist(graphList) == itemsinlist(wavePath))
-		for (idex=0; idex<(itemsinlist(graphList)); idex+=1)
-			// Set Trace wave.
-			thisGraph = stringfromlist(idex,graphList)
-			thisTraceStr = "Trace"+thisGraph
-			thisTracePath = "root:LA:"+thisTraceStr
-			wave thisTrace = $thisTracePath
-			// Set Data wave.
-			thisDataPath = stringfromlist(idex,wavePath)
-			wave thisTrace = $thisDataPath
-			// Now set Trace wave.
-			//thisTrace = thisData
-		endfor
-	else
-		abort "itemsinlist(graphList) != itemsinlist(wavePath)"
-	endif
-End
-
-Function Pop_Wave(ctrlName,popNum,popStr) : PopupMenuControl
-	String ctrlName
-	Variable popNum
-	String popStr
 	
-	string thisGraph, thisTracePath
-	string thisDataPath
-	
-	thisGraph = stringfromlist(2,ctrlName,"_")
-	thisTracePath = "root:LA:Trace"+thisGraph
-	wave thisTraceWave = $thisTracePath
-	label/W=IPP#$thisGraph leftAxis popStr+" (Hz)"
-	
-	thisDataPath = "root:"+popStr
-	wave thisDataWave = $thisDataPath
-	
-	thisTraceWave = thisDataWave	
-End
-
-Function Build_MS(panelName)
-//Function Build_MS(panelName,topFrame,fracGraph)
-	STRING panelName
-	//VARIABLE topFrame
-	//VARIABLE fracGraph
-	
-	//nvar FirstRun = root:LA:FirstRun
-	//nvar Spots = root:LA:Spots
-	//nvar NumGraphs = root:LA:NumGraphs
-	//nvar Period = root:LA:Period
-	//nvar Subperiod = root:LA:Subperiod
-	
-	//svar Ion1 = root:LA:Ion1
-	//svar Ion2 = root:LA:Ion2
-	
-	//wave rn_series = root:index:rn_series
-	//wave Picker = root:LA:Picker
-	//wave TraceG0 = root:LA:TraceG0
-	//wave TraceG1 = root:LA:TraceG1
-	//wave TraceG2 = root:LA:TraceG2
-	//wave TraceG3 = root:LA:TraceG3
-	///wave TraceG4 = root:LA:TraceG4
-	//wave TraceG1err = root:LA:TraceG1err
-	//wave TraceG3err = root:LA:TraceG3err
-	//wave TraceG4err = root:LA:TraceG4err
-	
-	//wave/T SpotNumber = root:LA:SpotNumber
-	//wave SpotLocation = root:LA:SpotLocation
-	
-	//string graphStr, windowStr, leftStr, wavePath, errorStr
-	//string loadList, thisTrace, optionsStr, thisWave, thisPath, graphList, dataList
-	//string YWaves = "TraceG0;TraceG1;TraceG2;TraceG3;TraceG4"
-	
-	//variable frameLeft = 0.01 // hardcoded b/c less likely to change.
-	//variable frameRight = 0.99 // "
-	//variable idex, frameTop, frameBottom, red, green, blue
-	
-	wave j13C0 = root:LA:j13C0
-	wave j13C1 = root:LA:j13C1
-		
-	PauseUpdate; Silent 1		// building window...
-	NewPanel /N=MS/W=(9,210,1509,935) as "LA-AMS Mass Spectrometry Panel"
-	ModifyPanel frameStyle=3
-	
-	//Ion Family Selection
-	PopupMenu LA_PopUp_Parity,pos={22.00,20.00},size={294.00,19.00},proc=Parity_Check,title="Family Possibilities to N2O2 and 100 m/z "
-	PopupMenu LA_PopUp_Parity,help={"Only works when \"Isotope by n Group\" is loaded."}
-	PopupMenu LA_PopUp_Parity,fSize=14
-	PopupMenu LA_PopUp_Parity,mode=1,popvalue="Cx",value= #"\"Cx;CH;CN;CN2;CNO;CN2O;CNO2;CN2O2;CO;CO2\""
-	
-	// Ion Table
-	Edit/W=(34,58,328,687)/HOST=MS  j13C0,j13C1
-	ModifyTable frameStyle= 6,format(Point)=1,width(Point)=0,rgb(Point)=(65535,65535,0)
-	ModifyTable size(j13C0)=14,width(j13C0)=116,size(j13C1)=14,width(j13C1)=138
-	ModifyTable statsArea=85
 End
