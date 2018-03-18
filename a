@@ -1,0 +1,696 @@
+#pragma TextEncoding = "UTF-8"
+#pragma rtGlobals=3		// Use modern global access method and strict wave access.
+
+// Place panel in menu.
+Menu "LA-AMS"
+	"Time Series/1", /q, getWin("IPP")
+	"Mass Spectra/2", /q, getWin("MS")
+End
+
+// brings panel to front or generates it
+Function getWin(windowStr)
+	string windowStr
+	
+	string windows = winlist(windowStr,";","WIN:64")
+	
+	if(strlen(windows)>0)
+		dowindow/f $windowStr
+	else
+		strswitch(windowStr)
+			case "IPP":
+				Global_Village()
+				Build_IPP("IPP",0.18,0.94)
+			case "MS":
+				Global_Village()
+				Build_MS("MS")
+		endswitch
+	endif
+End
+
+Function Global_Village()
+	if (datafolderexists("root:LA") != 1)
+		newdatafolder root:LA
+	endif
+	
+	sq_initializeGlobalSVar("root:LA:ToDo", "")
+	sq_initializeGlobalSVar("root:LA:Ion1", "")
+	sq_initializeGlobalSVar("root:LA:Ion2", "")
+	
+	sq_initializeGlobalNVar("root:LA:FirstRun", 0)
+	sq_initializeGlobalNVar("root:LA:Spots", 3)
+	sq_initializeGlobalNVar("root:LA:Pattern", 5)
+	sq_initializeGlobalNVar("root:LA:Rows", 1)
+	sq_initializeGlobalNVar("root:LA:Columns", 1)
+	sq_initializeGlobalNVar("root:LA:MeanError", 0)
+	sq_initializeGlobalNVar("root:LA:MeanRatio", 0)
+	sq_initializeGlobalNVar("root:LA:MeanRelError", 0)
+	sq_initializeGlobalNVar("root:LA:NumGraphs", 5)
+	sq_initializeGlobalNVar("root:LA:Period", 50)
+	sq_initializeGlobalNVar("root:LA:PeriodExpo", 0)
+	sq_initializeGlobalNVar("root:LA:Subperiod", 20)
+	sq_initializeGlobalNVar("root:LA:SubperiodExpo", 0)
+		
+	if (waveexists(root:index:rn_series))
+		wave rn_series = root:index:rn_series
+	else
+		abort "Cannot proceed without root:index:rn_series."
+	endif
+	
+	nvar Spots = root:LA:Spots
+	variable points = numpnts(rn_series)
+	
+	make/t/o/n=(Spots) root:LA:SpotNumber
+	make/o/n=(Spots) root:LA:SpotLocation
+	
+//	make/o/n=(Spots) root:LA:SpotsG0
+	make/o/n=(Spots) root:LA:SpotsG1
+	make/o/n=(Spots) root:LA:SpotsG1err
+//	make/o/n=(Spots) root:LA:SpotsG2
+	make/o/n=(Spots) root:LA:SpotsG3
+	make/o/n=(Spots) root:LA:SpotsG3err
+	make/o/n=(Spots) root:LA:SpotsG4
+	make/o/n=(Spots) root:LA:SpotsG4err
+	
+	make/o/n=(points) root:LA:Picker
+	make/o/n=(points) root:LA:TraceG0
+	make/o/n=(points) root:LA:TraceG1
+	make/o/n=(points) root:LA:TraceG1err
+	make/o/n=(points) root:LA:TraceG2
+	make/o/n=(points) root:LA:TraceG3
+	make/o/n=(points) root:LA:TraceG3err
+	make/o/n=(points) root:LA:TraceG4
+	make/o/n=(points) root:LA:TraceG4err
+	
+	make/o/t/n=(points) root:LA:TraceLabels
+	make/o/n=(points) root:LA:TraceLocations
+	
+	make/o/t/n=0 root:LA:j13C0
+	make/o/t/n=0 root:LA:j13C1
+	
+	make/o/n=(1,1) root:LA:ImageMatrix
+End
+
+// Build the panel.
+Function Build_IPP(panelName,topFrame,fracGraph)
+	STRING panelName
+	VARIABLE topFrame
+	VARIABLE fracGraph
+	
+	nvar FirstRun = root:LA:FirstRun
+	nvar Spots = root:LA:Spots
+	nvar NumGraphs = root:LA:NumGraphs
+	nvar Period = root:LA:Period
+	nvar Subperiod = root:LA:Subperiod
+	
+	svar Ion1 = root:LA:Ion1
+	svar Ion2 = root:LA:Ion2
+	
+	wave rn_series = root:index:rn_series
+	wave Picker = root:LA:Picker
+	wave TraceG0 = root:LA:TraceG0
+	wave TraceG1 = root:LA:TraceG1
+	wave TraceG2 = root:LA:TraceG2
+	wave TraceG3 = root:LA:TraceG3
+	wave TraceG4 = root:LA:TraceG4
+	wave TraceG1err = root:LA:TraceG1err
+	wave TraceG3err = root:LA:TraceG3err
+	wave TraceG4err = root:LA:TraceG4err
+	
+	wave/T SpotNumber = root:LA:SpotNumber
+	wave SpotLocation = root:LA:SpotLocation
+	
+	string graphStr, windowStr, leftStr, wavePath, errorStr
+	string loadList, thisTrace, optionsStr, thisWave, thisPath, graphList, dataList
+	string YWaves = "TraceG0;TraceG1;TraceG2;TraceG3;TraceG4"
+	
+	variable frameLeft = 0.01 // hardcoded b/c less likely to change.
+	variable frameRight = 0.99 // "
+	variable idex, frameTop, frameBottom, red, green, blue
+		
+	PauseUpdate; Silent 1		// building window...
+	NewPanel /N=IPP /K=1 /W=(8,53,640,798) as "LA-AMS Time Series Panel"
+	ModifyPanel cbRGB=(17476,17476,17476)
+	SetDrawLayer UserBack
+	GroupBox LA_Group_5,pos={313.00,65.00},size={180.00,37.00}
+	GroupBox LA_Group_5,labelBack=(65535,65535,65535),frame=0
+	GroupBox LA_Group_4,pos={135.00,66.00},size={165.00,36.00}
+	GroupBox LA_Group_4,labelBack=(65535,65535,65535),frame=0
+	GroupBox LA_Group_0,pos={13.00,2.00},size={108.00,63.00}
+	GroupBox LA_Group_0,labelBack=(65535,65535,65535),frame=0
+	GroupBox LA_Group_3,pos={422.00,3.00},size={160.00,60.00}
+	GroupBox LA_Group_3,labelBack=(65535,65535,65535),frame=0
+	GroupBox LA_Group_2,pos={265.00,3.00},size={146.00,60.00}
+	GroupBox LA_Group_2,labelBack=(65535,65535,65535),frame=0
+	GroupBox LA_Group_1,pos={125.00,3.00},size={131.00,60.00}
+	GroupBox LA_Group_1,labelBack=(65535,65535,65535),frame=0
+	PopupMenu LA_Pop_ToDo,pos={19.00,20.00},size={95.00,19.00},proc=Pop_ToDo,title="ToDo ="
+	PopupMenu LA_Pop_ToDo,mode=3,popvalue="Get List",value= root:panel:sq_toDoList+"Get List;"
+	SetVariable LA_Set_FirstRun,pos={130.00,10.00},size={118.00,18.00},proc=Set_Variable,title="First Run ="
+	SetVariable LA_Set_FirstRun,limits={0,inf,1},value= FirstRun, live=1
+	SetVariable LA_Set_Spots,pos={138.00,35.00},size={102.00,18.00},proc=Set_Variable,title="# Spots = "
+	SetVariable LA_Set_Spots,limits={1,inf,1},value= Spots,live= 1
+	SetVariable LA_Set_Period,pos={274.00,10.00},size={126.00,18.00},proc=Set_Variable,title="Period ="
+	SetVariable LA_Set_Period,limits={1,inf,10},value= Period,live= 1
+	SetVariable LA_Set_PeriodExpo,pos={274.00,35.00},size={127.00,18.00},proc=Set_Increment,title="Increment = 10"
+	SetVariable LA_Set_PeriodExpo,limits={-2,2,1},value= _NUM:1,live= 1
+	SetVariable LA_Set_Subperiod,pos={439.00,10.00},size={124.00,18.00},proc=Set_Variable,title="Subperiod ="
+	SetVariable LA_Set_Subperiod,limits={1,inf,1},value= Subperiod,live= 1
+	SetVariable LA_Set_SubperiodExpo,pos={438.00,35.00},size={126.00,18.00},proc=Set_Increment,title="Increment = 1"
+	SetVariable LA_Set_SubperiodExpo,limits={-1,1,1},value= _NUM:0,live= 1
+	SetVariable LA_Set_Ion1,pos={152.00,75.00},size={133.00,19.00},proc=Set_Ion,title="Ion 1"
+	SetVariable LA_Set_Ion1,font="default",fSize=13,fStyle=1
+	SetVariable LA_Set_Ion1,fColor=(65535,21845,32639)
+	SetVariable LA_Set_Ion1,limits={-inf,inf,0},value= Ion1
+	SetVariable LA_Set_Ion2,pos={322.00,75.00},size={156.00,20.00},proc=Set_Ion,title="Ion 2"
+	SetVariable LA_Set_Ion2,fSize=13,fStyle=1,fColor=(13364,40092,33410)
+	SetVariable LA_Set_Ion2,limits={-inf,inf,0},value= Ion2
+	CheckBox LA_Check_Org,pos={510.00,72.00},size={61.00,30.00},proc=Set_Org,title=" Org"
+	CheckBox LA_Check_Org,help={"Toggle Org Wave"},labelBack=(65535,65535,65535)
+	CheckBox LA_Check_Org,fSize=22,fStyle=1,fColor=(3,52428,1),value= 0
+	
+	SetDrawEnv xcoord= abs,ycoord= abs,fsize= 20,textyjust= 2
+	
+	for (idex=0; idex<(numGraphs); idex=idex+1)
+		graphStr = "G" + num2str(idex)
+		windowStr = panelName + "#" + graphStr
+		wavePath = "root:LA:"+stringfromlist(idex,Ywaves)
+		errorStr = wavePath+"err"
+		if (numGraphs==5) // special case
+			if (idex==0)
+				frameTop = topFrame
+				frameBottom = frameTop + fracGraph*(1-topFrame)/numGraphs + 0.0007
+			elseif (idex==1)
+				frameTop = topFrame + idex*fracGraph*(1-topFrame)/numGraphs - 0.0007
+				frameBottom = frameTop + fracGraph*(1-topFrame)/numGraphs + 0.0007
+			elseif (idex==2)
+				frameTop = topFrame + idex*fracGraph*(1-topFrame)/numGraphs + ((1-topFrame)/3)*(1-fracGraph)
+				frameBottom = frameTop + fracGraph*(1-topFrame)/numGraphs + 0.0007
+			elseif (idex==3)
+				frameTop = topFrame + idex*fracGraph*(1-topFrame)/numGraphs + ((1-topFrame)/3) * (1-fracGraph) - 0.0007
+				frameBottom = frameTop + fracGraph*(1-topFrame)/numGraphs + 0.0007
+			elseif (idex==4)
+				frameTop = topFrame + idex*fracGraph*(1-topFrame)/numGraphs + (2*(1-topFrame)/3)*(1-fracGraph)
+				frameBottom = frameTop + fracGraph*(1-topFrame)/numGraphs
+			endif
+		else // normal case
+			frameTop = (topFrame) + idex * ((1-topFrame)/numGraphs)
+			frameBottom = frameTop + ((1-topFrame)/numGraphs) * fracGraph
+		endif
+		
+		Display /W=(frameLeft, frameTop, frameRight, frameBottom) /HOST=$panelName /N=$GraphStr /L=leftAxis $wavePath /TN=Trace vs root:index:rn_series
+		AppendToGraph/W=$windowStr /R=rightAxis Picker /TN=Picker vs root:index:rn_series
+		ModifyGraph axisEnab(bottom)={0.1,1},freePos(leftAxis)={0.1,kwFraction}, freePos(rightAxis)={0,kwFraction}
+		ModifyGraph lblPos(leftAxis)=70, noLabel(rightAxis)=2, tick(rightAxis)=3
+		ModifyGraph rgb(Picker)=(52428,52428,52428), mode(Picker)=1
+		ModifyGraph lowTrip=0.01, highTrip=1e+06, minor=1, lsize=2, fStyle=1, fSize=12, standoff=0, axisOnTop=1, frameStyle=1
+		ReorderTraces _back_, {Picker}
+		
+		if (idex==0 || idex==1)
+			red = 65535
+			green = 21845
+			blue = 32639
+		elseif (idex==2 || idex==3)
+			red = 13364
+			green = 40092
+			blue = 33410
+		elseif (idex==4)
+			red = 34952
+			green = 12850
+			blue = 54227
+		endif
+		
+		if (idex==0 || idex==2)
+			ModifyGraph mode(Trace)=1,zColor(Trace)={Picker,0.5,0.5,Grays,0},zColorMax(Trace)=(red,green,blue)
+			Label bottom "Run Number"
+			Label leftAxis "Hz"
+		elseif (idex==1 || idex==3 || idex==4)
+			ModifyGraph mode(Trace)=4,marker(Trace)=9,msize(Trace)=6,mrkThick(Trace)=3,useMrkStrokeRGB(Trace)=1,mrkStrokeRGB(Trace)=(red,green,blue), rgb(Trace)=(0,0,0),gaps(Trace)=0
+			ModifyGraph userticks(bottom)={SpotLocation,SpotNumber}
+			ErrorBars Trace Y,wave=($errorStr,$errorStr)
+			Label bottom "Spot Number"
+			if (idex!=4)
+				Label leftAxis "Sum (Hz)"
+			else
+				Label leftAxis "Ratio"
+				endif
+			endif
+	endfor
+	
+	// Decides what to load for the G0 and G2 Trace waves.
+	if (waveexists(root:Org))
+		Trace_Loader("G0;G2","root:Org;root:Org")
+	else
+		loadList =  Return_WaveList() 
+		if (itemsinlist(loadList) > 0)
+			Prompt thisWave,"Choose a trace from the 'root:' directory in order to proceed.",popup,loadList
+			doPrompt/HELP="Select a wave with the same number of points as 'rn_series' (root:index:rn_series)." "textHere", thisWave
+			if (V_flag == 0) // "Continue" is clicked.
+				thisPath = "root:"+thisWave
+				graphList = "G0;G2"
+				dataList = thisPath + ";" + thisPath
+				Trace_Loader(graphList, dataList) // We have built in the ability to assign multiple paths for multiple graphs, but we do not use it here.
+			else // "Cancel" is clicked.
+				abort "In the 'root:' directory, you must have a wave with the same number of points as 'rn_series' (root:index:rn_series) in order to proceed."
+			endif
+		else
+			abort "In the 'root:' directory, you must have a wave with the same number of points as 'rn_series' (root:index:rn_series) in order to proceed."
+		endif
+	endif
+	
+	Update_Picker("root:all")
+End
+
+Function/S Return_WaveList() // b/c sometimes the options string is too long.
+	variable points = numpnts(root:index:rn_series)
+	string optionsStr = "INTEGER:0,TEXT:0,DIMS:1,MINROWS:" +num2istr(points)+ ",MAXROWS:" + num2istr(points)
+	string thisList
+	thisList = wavelist("*",";",optionsStr)
+	return thisList
+End
+
+// Set the global ToDo wave and rescale.
+Function Pop_ToDo (ctrlName,popNum,popStr) : PopupMenuControl
+	STRING ctrlName
+	VARIABLE popNum
+	STRING popStr
+	string toDoPath, thisWindow
+	variable idex, thisNum
+	nvar numGraphs = root:LA:numGraphs
+	svar ToDoStr = root:LA:ToDo
+	toDoStr = popStr
+	toDoPath = "root:"+toDoStr
+	wave toDo = $toDoPath
+	
+	Wavenote_Compose(ToDoPath) // A series of sanity checks.
+	Wavenote_Read(ToDoPath) // Retrieve the variable values from the wavenote and set the controls with them.
+	Update_Picker(ToDoPath)
+	
+	for (idex=0; idex<numGraphs; idex=idex+1)
+		thisWindow = "IPP#G"+num2str(idex)
+		SetAxis /W=$thisWindow /Z bottom ToDo[0], ToDo[numpnts(ToDo)-1]
+		SetAxis /W=$thisWindow /Z /A=2 leftAxis 0,*
+		SetAxis /W=$thisWindow /Z /A=2 rightAxis 0,*
+	endfor
+End
+
+Function Set_Increment(ctrlName,varNum,varStr,varName) : SetVariableControl
+	STRING ctrlName
+	VARIABLE varNum
+	STRING varStr
+	STRING varName // = "" b/c internal number...
+	varName = stringfromlist( (itemsinlist(ctrlName,"_")-1), ctrlName, "_")
+	svar ToDo = root:LA:ToDo
+	string ToDoPath = "root:" + ToDo
+	
+	strswitch (varName)
+		case "PeriodExpo":
+			SetVariable LA_Set_Period limits = {1,inf,10^varNum}
+			SetVariable LA_Set_PeriodExpo title = "Increment = "+num2str(10^varnum)
+			break
+		case "SubperiodExpo":
+			SetVariable LA_Set_Subperiod limits = {1,inf,10^varNum}
+			SetVariable LA_Set_SubperiodExpo title = "Increment = "+num2str(10^varnum)
+			break
+	endswitch
+	
+	Wavenote_Write (ToDoPath,varName,varStr)
+End
+
+Function Set_Variable (ctrlName,varNum,varStr,varName) : SetVariableControl
+	STRING ctrlName
+	VARIABLE varNum
+	STRING varStr
+	STRING varName
+	svar ToDo = root:LA:ToDo
+	string ToDoPath = "root:" + ToDo
+	
+	if (strlen(ToDo) == 0)
+		abort "You must choose a ToDo wave before proceeding."
+	endif
+	
+	Wavenote_Write(ToDoPath,varName,varStr)
+	Update_Picker(ToDoPath)
+End
+
+Function Set_Ion(ctrlName,varNum,varStr,varName) : SetVariableControl
+	STRING ctrlName
+	VARIABLE varNum
+	STRING varStr
+	STRING varName
+	
+	svar Ion1 = root:LA:Ion1
+	svar Ion2 = root:LA:Ion2
+	
+	svar ToDo = root:LA:ToDo
+	string todoPath = "root:"+ToDo
+	
+	wave Matrix = root:HRMxM_all
+	wave TraceG0 = root:LA:TraceG0
+	wave TraceG2 = root:LA:TraceG2
+	string HzLabel = varStr+"\r(Hz)"
+	string SumLabel = varStr+"\r(Sum)"
+	string RatioLabel = Ion2+" / "+Ion1
+	variable ionDim = FindDimLabel(Matrix, 1, varStr)
+	
+	if (strlen(ToDo) == 0)
+		abort "You must choose a ToDo wave before proceeding."
+	endif
+	
+	if (ionDim == -2)
+		abort "The ion "+varStr+" is not found in the list of ions that were fit."
+	endif
+	
+	strswitch (varName)
+		case "Ion1":
+			//TraceG0 = Matrix[p][ionDim]
+			matrixop/o TraceG0 = col(Matrix,ionDim)
+			Label/W=IPP#G0/Z leftAxis HzLabel
+			Label/W=IPP#G1/Z leftAxis SumLabel
+			break
+		case "Ion2":
+			matrixop/o TraceG1 = col(Matrix,ionDim)
+			Label/W=IPP#G2/Z leftAxis HzLabel
+			Label/W=IPP#G3/Z leftAxis SumLabel
+			break
+	endswitch
+	
+	Label/W=IPP#G4/Z leftAxis RatioLabel
+	
+	Update_Picker(ToDoPath)
+End
+
+// Inspect the wavenote and write or restore variables if they are missing or damaged.
+Function Wavenote_Compose(ToDoPath)
+	STRING ToDoPath
+	wave ToDo = $ToDoPath
+	string strList = "FirstRun;Spots;Pattern;Rows;Columns;Period;PeriodExpo;Subperiod;SubperiodExpo;Rows;Columns;Pattern"
+	string valList = "*;1;50;1;10;1;5;5;3"
+	string waveNote = note(ToDo)
+	string thisStr, thisVal, waveCombo, waveKey, waveVal
+	variable idex, jdex, match, thisFirstRun
+	
+	for (idex=0; idex<(itemsinlist(strList)); idex=idex+1)
+		match = 0
+		thisStr = stringfromlist(idex, strList)
+		thisVal = stringfromlist(idex, valList)
+		for (jdex=0; jdex<(itemsinlist(wavenote)); jdex=jdex+1)
+			waveCombo = stringfromlist(jdex, wavenote)
+			waveKey = stringfromlist(0, waveCombo, ":")
+			waveVal = stringfromlist(1, waveCombo, ":")
+			if (stringmatch(thisStr,waveKey))
+				match = match + 1
+			endif
+		endfor
+		if (match < 1)
+			waveVal = stringfromlist(1, stringfromlist(idex, wavenote), ":")
+			if (stringmatch(thisStr,"FirstRun"))
+				thisFirstRun = ToDo[0]
+				wavenote = wavenote + thisStr + ":" + num2istr(thisFirstRun) + ";"
+			else
+				wavenote = wavenote + thisStr + ":" + thisVal + ";"
+			endif
+		elseif (match == 1)
+			if (numtype(str2num(waveVal)) != 0)
+				if (stringmatch(thisStr,"FirstRun"))
+					thisFirstRun = ToDo[0]
+					wavenote = ReplaceStringByKey(thisStr, waveNote,num2istr(thisFirstRun))
+				else
+					wavenote = ReplaceStringByKey(thisStr, waveNote, thisVal)
+				endif
+			endif
+		elseif (match > 1)
+			Abort "Please remove duplicate variables from the wavenote.\r\rTo edit the wavenote:\r1. Data > Data Browser\r2. Select ToDo wave\r3. Make sure \"Info\" is checked\r4. Edit wavenote by double-clicking the icon above the upper right corner of the info box.\r5. Save note"
+		endif
+	endfor
+	
+	note/K ToDo, wavenote
+End
+
+// Retrieve values from the wavenote and set the controls.
+Function Wavenote_Read(ToDoPath)
+	STRING ToDoPath
+	wave ToDo = $ToDoPath
+	string strList = "FirstRun;Spots;Pattern;Rows;Columns;Period;PeriodExpo;Subperiod;SubperiodExpo;Rows;Columns;Pattern"
+	string waveNote = note(ToDo)
+	string thisStr
+	variable idex
+	
+	for (idex=0; idex<(itemsinlist(strList)); idex=idex+1)
+		thisStr = stringfromlist(idex,strList)
+		nvar thisVarStr = root:LA:$thisStr
+		thisVarStr = NumberByKey(thisStr, wavenote) 
+	endfor
+End
+
+// Updates the wavenote when the variables are changed.
+Function Wavenote_Write(todoPath,varName,varStr)
+	STRING todoPath
+	STRING varName
+	STRING varStr
+	wave ToDo = $todoPath
+	string wavenote =  note (ToDo)
+	
+	wavenote = ReplaceStringByKey(varName, wavenote, varStr)
+	note/k ToDo, wavenote
+End
+
+Function Update_Picker (ToDoPath)
+	STRING ToDoPath
+	
+	string thisSpotWv
+	
+	nvar FirstRun = root:LA:FirstRun
+	nvar Spots = root:LA:Spots
+	nvar Period = root:LA:Period
+	nvar Subperiod = root:LA:Subperiod
+	
+	wave ToDo = $ToDoPath
+	wave Picker = root:LA:Picker
+	wave rn_series = root:index:rn_series
+	
+	wave TraceG0 = root:LA:TraceG0
+	wave TraceG1 = root:LA:TraceG1
+	wave TraceG2 = root:LA:TraceG2
+	wave TraceG3 = root:LA:TraceG3
+	wave TraceG4 = root:LA:TraceG4
+	wave TraceG1err = root:LA:TraceG1err
+	wave TraceG3err = root:LA:TraceG3err
+	wave TraceG4err = root:LA:TraceG4err
+	
+//	wave SpotsG0 = root:LA:SpotsG0
+	wave SpotsG1 = root:LA:SpotsG1
+//	wave SpotsG2 = root:LA:SpotsG2
+	wave SpotsG3 = root:LA:SpotsG3
+	wave SpotsG4 = root:LA:SpotsG4
+	wave SpotsG1err = root:LA:SpotsG1err
+	wave SpotsG3err = root:LA:SpotsG3err
+	wave SpotsG4err = root:LA:SpotsG4err
+	wave/T SpotNumber = root:LA:SpotNumber
+	wave SpotLocation = root:LA:SpotLocation
+	
+	findlevel/Q/P rn_series, FirstRun
+	variable FirstPoint = V_LevelX
+	
+	findlevel/Q/P rn_series, ToDo[0]
+	variable todoBegin = V_LevelX
+	
+	findlevel/Q/P rn_series, ToDo[numpnts(ToDo)-1]
+	variable todoEnd = V_LevelX
+	
+	variable ion1Sum, ion2Sum
+	variable ion1Err, ion2Err
+	variable ion1RelErr, ion2RelErr
+	variable midpoint
+	variable periodBegin, periodEnd
+	variable ratio, ratioRelErr, ratioErr
+	variable idex
+	
+	string spotWaves = "SpotsG1;SpotsG3;SpotsG4;SpotsG1err;SpotsG3err;SpotsG4err;SpotLocation;SpotNumber"
+	for (idex=0; idex<(itemsinlist(spotWaves)); idex=idex+1)
+		wave thisWave = root:LA:$stringfromlist(idex,spotWaves)
+		redimension/N=(Spots) thisWave
+		SetScale/I x,1,Spots,"" thisWave
+		if ( (wavetype(thisWave) != 0) && (!stringmatch(spotWaves,"SpotNumber")) )
+			thisWave = 0
+		endif
+	endfor
+	SpotNumber= " "
+	
+	string traceWaves = "TraceG1;TraceG3;TraceG4;TraceG1err;TraceG3err;TraceG4err"
+	for (idex=0; idex<(itemsinlist(traceWaves)); idex=idex+1)
+		wave thisWave = root:LA:$stringfromlist(idex,traceWaves)
+		thisWave = NaN
+	endfor
+	Picker[todoBegin, todoEnd] = 0
+		
+	for (idex=0; idex<Spots; idex=idex+1)
+		periodBegin = FirstPoint + idex * Period
+		periodEnd = periodBegin + Subperiod
+		Picker[periodBegin,periodEnd] = 1
+		midpoint = round ((periodBegin + periodEnd) /2 )
+		SpotLocation [idex] = rn_series[midpoint]
+		SpotNumber [idex] = num2str(idex+1)
+		
+		// Ion 1 (Trace G1)
+		WaveStats/Q/R=[periodBegin, periodEnd] TraceNameToWaveRef ("IPP#G0", "Trace")
+		ion1Sum = V_Sum
+		ion1Err = sqrt(ion1Sum)		
+		if (numtype(ion1Sum) != 0)
+			ion1Sum = 0
+		endif
+		ion1RelErr = ion1Err/ion1Sum
+		if (numtype(ion1Err) != 0)
+			ion1Err = 0
+		endif
+		SpotsG1 [idex] = ion1Sum
+		SpotsG1err [idex] = ion1Err
+		TraceG1 [midpoint] = ion1Sum
+		TraceG1err [midpoint] = ion1Err
+		
+		// Ion 2 (Trace G3)
+		WaveStats/Q/R=[periodBegin, periodEnd] TraceNameToWaveRef ("IPP#G2", "Trace")
+		ion2Sum = V_Sum
+		ion2Err = sqrt(ion2Sum)
+		if (numtype(ion2Sum) != 0)
+			ion2Sum = 0
+		endif
+		ion2RelErr = ion2Err/ion2Sum
+		if (numtype(ion2Err) != 0)
+			ion2Err = 0
+		endif
+		SpotsG3 [idex] = ion2Sum
+		SpotsG3err [idex] = ion2Err
+		TraceG3 [midpoint] = ion2Sum
+		TraceG3err [midpoint] = ion2Err
+		
+		// Ion 2 / Ion 1 (Trace G4)
+		ratio = ion2Sum / ion1Sum
+		if (numtype(ratio) != 0)
+			ratio = 0
+		endif
+		ratioRelErr = sqrt(ion1RelErr^2 + ion2RelErr^2)
+		ratioErr = ratio * ratioRelErr
+		if (numtype(ratioErr) != 0)
+			ratioErr = 0
+		endif
+		SpotsG4 [idex] = ratio
+		SpotsG4err [idex] = ratioErr
+		TraceG4 [midpoint] = ratio
+		TraceG4err [midpoint] = ratioErr
+		endfor
+End
+
+Function DimLabels(str_MxPath)
+	string str_MxPath
+	wave Matrix = $str_MxPath
+	wave/t IonWave = root:HR_Sticks:ExactMassText
+	
+	variable idex
+	string ion
+	
+	for (idex=0;idex<(numpnts(IonWave)); idex=idex+1)
+		ion = IonWave[idex]
+		SetDimLabel 1,idex,$ion,$str_MxPath
+	endfor
+End
+
+Function Trace_Loader(graphList,wavePath) // For 1D waves; for 2D waves, use Set_Ion to set ions by name..
+	string graphList
+	string wavePath
+	string thisGraph, thisTraceStr, thisTracePath
+	string thisDataPath
+	variable idex
+	// Sanity.
+	if (itemsinlist(graphList) == itemsinlist(wavePath))
+		for (idex=0; idex<(itemsinlist(graphList)); idex+=1)
+			// Set Trace wave.
+			thisGraph = stringfromlist(idex,graphList)
+			thisTraceStr = "Trace"+thisGraph
+			thisTracePath = "root:LA:"+thisTraceStr
+			wave thisTrace = $thisTracePath
+			// Set Data wave.
+			thisDataPath = stringfromlist(idex,wavePath)
+			wave thisTrace = $thisDataPath
+			// Now set Trace wave.
+			//thisTrace = thisData
+		endfor
+	else
+		abort "itemsinlist(graphList) != itemsinlist(wavePath)"
+	endif
+End
+
+Function Pop_Wave(ctrlName,popNum,popStr) : PopupMenuControl
+	String ctrlName
+	Variable popNum
+	String popStr
+	
+	string thisGraph, thisTracePath
+	string thisDataPath
+	
+	thisGraph = stringfromlist(2,ctrlName,"_")
+	thisTracePath = "root:LA:Trace"+thisGraph
+	wave thisTraceWave = $thisTracePath
+	label/W=IPP#$thisGraph leftAxis popStr+" (Hz)"
+	
+	thisDataPath = "root:"+popStr
+	wave thisDataWave = $thisDataPath
+	
+	thisTraceWave = thisDataWave	
+End
+
+Function Build_MS(panelName)
+//Function Build_MS(panelName,topFrame,fracGraph)
+	STRING panelName
+	//VARIABLE topFrame
+	//VARIABLE fracGraph
+	
+	//nvar FirstRun = root:LA:FirstRun
+	//nvar Spots = root:LA:Spots
+	//nvar NumGraphs = root:LA:NumGraphs
+	//nvar Period = root:LA:Period
+	//nvar Subperiod = root:LA:Subperiod
+	
+	//svar Ion1 = root:LA:Ion1
+	//svar Ion2 = root:LA:Ion2
+	
+	//wave rn_series = root:index:rn_series
+	//wave Picker = root:LA:Picker
+	//wave TraceG0 = root:LA:TraceG0
+	//wave TraceG1 = root:LA:TraceG1
+	//wave TraceG2 = root:LA:TraceG2
+	//wave TraceG3 = root:LA:TraceG3
+	///wave TraceG4 = root:LA:TraceG4
+	//wave TraceG1err = root:LA:TraceG1err
+	//wave TraceG3err = root:LA:TraceG3err
+	//wave TraceG4err = root:LA:TraceG4err
+	
+	//wave/T SpotNumber = root:LA:SpotNumber
+	//wave SpotLocation = root:LA:SpotLocation
+	
+	//string graphStr, windowStr, leftStr, wavePath, errorStr
+	//string loadList, thisTrace, optionsStr, thisWave, thisPath, graphList, dataList
+	//string YWaves = "TraceG0;TraceG1;TraceG2;TraceG3;TraceG4"
+	
+	//variable frameLeft = 0.01 // hardcoded b/c less likely to change.
+	//variable frameRight = 0.99 // "
+	//variable idex, frameTop, frameBottom, red, green, blue
+	
+	wave j13C0 = root:LA:j13C0
+	wave j13C1 = root:LA:j13C1
+		
+	PauseUpdate; Silent 1		// building window...
+	NewPanel /N=MS/W=(9,210,1509,935) as "LA-AMS Mass Spectrometry Panel"
+	ModifyPanel frameStyle=3
+	
+	//Ion Family Selection
+	PopupMenu LA_PopUp_Parity,pos={22.00,20.00},size={294.00,19.00},proc=Parity_Check,title="Family Possibilities to N2O2 and 100 m/z "
+	PopupMenu LA_PopUp_Parity,help={"Only works when \"Isotope by n Group\" is loaded."}
+	PopupMenu LA_PopUp_Parity,fSize=14
+	PopupMenu LA_PopUp_Parity,mode=1,popvalue="Cx",value= #"\"Cx;CH;CN;CN2;CNO;CN2O;CNO2;CN2O2;CO;CO2\""
+	
+	// Ion Table
+	Edit/W=(34,58,328,687)/HOST=MS  j13C0,j13C1
+	ModifyTable frameStyle= 6,format(Point)=1,width(Point)=0,rgb(Point)=(65535,65535,0)
+	ModifyTable size(j13C0)=14,width(j13C0)=116,size(j13C1)=14,width(j13C1)=138
+	ModifyTable statsArea=85
+End
